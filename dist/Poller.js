@@ -114,8 +114,7 @@ class Poller {
             // Check if response is different than last stored file
             if (this.lastStoredResponseMd5) {
                 if (this.lastStoredResponseMd5 != md5_1.default(this.body)) {
-                    this.logger.info(`Change detected ! URL: ${this.options.url}`);
-                    this.saveBody();
+                    this.onChange();
                 }
             }
             else {
@@ -123,26 +122,28 @@ class Poller {
                 this.logger.info(`Saving first response`);
                 this.saveBody();
             }
-            if (this.body !== 'EMPTY' && this.lastBody && this.lastBody != this.body) {
-                this.logger.info(`Change detected ! URL: ${this.options.url}`);
-                this.saveBody();
-                // Send emails
-                for (let email of this.options.emails) {
-                    try {
-                        yield this.mailer.send({
-                            from: process.env.EMAIL_FROM,
-                            to: email,
-                            subject: process.env.EMAIL_SUBJECT || 'Change detected !',
-                            html: `Change detected on <a href="${this.options.url}">${this.options.url}</a>`,
-                        });
-                        this.logger.info(`Email sent to: ${email}`);
-                    }
-                    catch (error) {
-                        this.stop();
-                    }
+            this.lastBody = this.body;
+        });
+    }
+    onChange() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.info(`Change detected ! URL: ${this.options.url}`);
+            this.saveBody();
+            // Send emails
+            for (let email of this.options.emails) {
+                try {
+                    yield this.mailer.send({
+                        from: process.env.EMAIL_FROM,
+                        to: email,
+                        subject: process.env.EMAIL_SUBJECT || 'Change detected !',
+                        html: `Change detected on <a href="${this.options.url}">${this.options.url}</a>`,
+                    });
+                    this.logger.info(`Email sent to: ${email}`);
+                }
+                catch (error) {
+                    this.stop();
                 }
             }
-            this.lastBody = this.body;
         });
     }
     download() {
@@ -199,6 +200,7 @@ class Poller {
             '/',
             parsed.host.replace(/www\./, '').replace(/\./g, '_').replace(ntfsChars, ''),
             slugify_1.default(parsed.path.replace(/\//g, '_s_')).replace(ntfsChars, ''),
+            this.options.css ? `-css_${this.options.css}` : '',
             `-md5_${md5_1.default(this.options.url)}`,
         ].join('');
     }

@@ -117,8 +117,7 @@ export default class Poller {
 		// Check if response is different than last stored file
 		if (this.lastStoredResponseMd5) {
 			if (this.lastStoredResponseMd5 != md5(this.body)) {
-				this.logger.info(`Change detected ! URL: ${this.options.url}`);
-				this.saveBody();
+				this.onChange();
 			}
 		} else {
 			this.logger.info(`MIME: ${this.mime}`);
@@ -126,27 +125,27 @@ export default class Poller {
 			this.saveBody();
 		}
 
-		if (this.body !== 'EMPTY' && this.lastBody && this.lastBody != this.body) {
-			this.logger.info(`Change detected ! URL: ${this.options.url}`);
-			this.saveBody();
+		this.lastBody = this.body;
+	}
 
-			// Send emails
-			for (let email of this.options.emails) {
-				try {
-					await this.mailer.send({
-						from: process.env.EMAIL_FROM,
-						to: email,
-						subject: process.env.EMAIL_SUBJECT || 'Change detected !',
-						html: `Change detected on <a href="${this.options.url}">${this.options.url}</a>`,
-					});
-					this.logger.info(`Email sent to: ${email}`);
-				} catch (error) {
-					this.stop();
-				}
+	async onChange() {
+		this.logger.info(`Change detected ! URL: ${this.options.url}`);
+		this.saveBody();
+
+		// Send emails
+		for (let email of this.options.emails) {
+			try {
+				await this.mailer.send({
+					from: process.env.EMAIL_FROM,
+					to: email,
+					subject: process.env.EMAIL_SUBJECT || 'Change detected !',
+					html: `Change detected on <a href="${this.options.url}">${this.options.url}</a>`,
+				});
+				this.logger.info(`Email sent to: ${email}`);
+			} catch (error) {
+				this.stop();
 			}
 		}
-
-		this.lastBody = this.body;
 	}
 
 	async download() {
@@ -210,6 +209,7 @@ export default class Poller {
 			'/',
 			parsed.host.replace(/www\./, '').replace(/\./g, '_').replace(ntfsChars, ''),
 			slugify(parsed.path.replace(/\//g, '_s_')).replace(ntfsChars, ''),
+			this.options.css ? `-css_${this.options.css}` : '',
 			`-md5_${md5(this.options.url)}`,
 		].join('');
 	}
