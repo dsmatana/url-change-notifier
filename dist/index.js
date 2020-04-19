@@ -16,6 +16,7 @@ const argv = yargs_1.default
     .option('url', { alias: 'u', describe: 'URL to watch', type: 'string', demandOption: true })
     .option('emails', { alias: 'e', describe: 'Email recipients to notify after change', type: 'string' })
     .option('interval', { alias: 'i', describe: 'Polling interval in seconds', type: 'number', default: 10 })
+    .option('count', { describe: 'Number of times to check url', type: 'number' })
     .option('css', {
     alias: 'c',
     describe: 'For HTML responses only. Watch only contents of elements that match entered CSS selector',
@@ -49,6 +50,7 @@ const run = () => {
         url: argv.url,
         css: argv.css,
         interval: argv.interval,
+        count: argv.count,
         emails: (argv.emails && argv.emails.split(',').map(v => v.trim())) || [],
         storage: argv.storage || path.join(__dirname, '../storage'),
         file: argv.file,

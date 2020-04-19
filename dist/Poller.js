@@ -22,12 +22,14 @@ const md5_1 = __importDefault(require("md5"));
 const md5_file_1 = __importDefault(require("md5-file"));
 const url_1 = __importDefault(require("url"));
 const mime_1 = __importDefault(require("mime"));
+const random_useragent_1 = __importDefault(require("random-useragent"));
 const Logger_1 = __importDefault(require("./Logger"));
 class Poller {
     constructor(options, mailer) {
         this.options = {
             url: '',
             css: undefined,
+            count: undefined,
             interval: undefined,
             emails: [],
             storage: null,
@@ -35,6 +37,7 @@ class Poller {
         };
         this.mailer = null;
         this.logger = null;
+        this.count = 0;
         this.timeout = null;
         this.response = null;
         this.responseStream = null;
@@ -58,6 +61,12 @@ class Poller {
     loop() {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.poll();
+            if (this.options.count) {
+                this.count++;
+                if (this.count == this.options.count) {
+                    process.exit();
+                }
+            }
             this.timeout = setTimeout(() => {
                 this.loop();
             }, this.options.interval * 1000);
@@ -122,7 +131,17 @@ class Poller {
     }
     download() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.response = yield axios_1.default.get(this.options.url);
+            this.response = yield axios_1.default.get(this.options.url, {
+                headers: {
+                    'User-Agent': random_useragent_1.default.getRandom(ua => {
+                        return ua.browserName == 'Chrome' && ua.osName == 'Windows' && ua.osVersion == '10';
+                    }),
+                },
+                proxy: process.env.HTTP_PROXY && process.env.HTTP_PROXY_PORT && {
+                    host: process.env.HTTP_PROXY,
+                    port: Number(process.env.HTTP_PROXY_PORT),
+                } || undefined,
+            });
             if (this.options.file) {
                 this.responseStream = yield axios_1.default({ method: 'get', url: this.options.url, responseType: 'stream' });
             }
@@ -189,7 +208,7 @@ class Poller {
             .split('/')
             .pop()
             .match(/md5_([0-9a-z]*)\./i);
-        return match && match[1] || null;
+        return (match && match[1]) || null;
     }
 }
 exports.default = Poller;

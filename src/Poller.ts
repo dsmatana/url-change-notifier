@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import axios from 'axios';
 import moment from 'moment';
 import cheerio from 'cheerio';
@@ -8,6 +9,7 @@ import md5 from 'md5';
 import md5file from 'md5-file';
 import url from 'url';
 import mime from 'mime';
+import random_useragent from 'random-useragent';
 
 import createLogger from './Logger';
 
@@ -15,6 +17,7 @@ export default class Poller {
 	options = {
 		url: '',
 		css: undefined,
+		count: undefined,
 		interval: undefined,
 		emails: [],
 		storage: null,
@@ -23,6 +26,7 @@ export default class Poller {
 
 	mailer = null;
 	logger = null;
+	count = 0;
 	timeout = null;
 
 	response = null;
@@ -36,6 +40,7 @@ export default class Poller {
 			...this.options,
 			...options,
 		};
+
 		this.mailer = mailer;
 
 		this.logger = createLogger(`${this.storageDir}/log.log`);
@@ -55,6 +60,14 @@ export default class Poller {
 
 	async loop() {
 		await this.poll();
+
+		if(this.options.count) {
+			this.count++;
+			if(this.count == this.options.count) {
+				process.exit();
+			}
+		}
+
 		this.timeout = setTimeout(() => {
 			this.loop();
 		}, this.options.interval * 1000);
@@ -120,7 +133,17 @@ export default class Poller {
 	}
 
 	async download() {
-		this.response = await axios.get(this.options.url);
+		this.response = await axios.get(this.options.url, {
+			headers: {
+				'User-Agent': random_useragent.getRandom(ua => {
+					return ua.browserName == 'Chrome' && ua.osName == 'Windows' && ua.osVersion == '10';
+				}),
+			},
+			proxy: process.env.HTTP_PROXY && process.env.HTTP_PROXY_PORT && {
+				host: process.env.HTTP_PROXY,
+				port: Number(process.env.HTTP_PROXY_PORT),
+			} || undefined,
+		});
 		if (this.options.file) {
 			this.responseStream = await axios({ method: 'get', url: this.options.url, responseType: 'stream' });
 		}
@@ -177,8 +200,8 @@ export default class Poller {
 
 			if (files.length) {
 				let lastFile = null;
-				for(let file of files) {
-					if(file.match(/^[0-9-_\.]*md5_([0-9a-z]*)\./)) {
+				for (let file of files) {
+					if (file.match(/^[0-9-_\.]*md5_([0-9a-z]*)\./)) {
 						lastFile = file;
 					}
 				}
@@ -200,6 +223,6 @@ export default class Poller {
 			.pop()
 			.match(/md5_([0-9a-z]*)\./i);
 
-		return match && match[1] || null;
+		return (match && match[1]) || null;
 	}
 }
