@@ -47,7 +47,10 @@ export default class Poller {
 	}
 
 	start() {
-		this.logger.info(`Started watching with polling interval ${this.options.interval} seconds`);
+		this.logger.info(
+			`Started watching with polling interval ${this.options.interval} seconds` +
+				(this.options.css ? ` with CSS selector: ${this.options.css}` : '')
+		);
 		this.loop();
 	}
 
@@ -61,9 +64,9 @@ export default class Poller {
 	async loop() {
 		await this.poll();
 
-		if(this.options.count) {
+		if (this.options.count) {
 			this.count++;
-			if(this.count == this.options.count) {
+			if (this.count == this.options.count) {
 				process.exit();
 			}
 		}
@@ -86,7 +89,21 @@ export default class Poller {
 			case 'text/html':
 				const html = encoding.convert(this.response.data, 'UTF-8');
 				const $ = cheerio.load(html);
-				this.body = this.options.css ? $(this.options.css).html() : this.response.data;
+
+				// Concat contents of all matched css elements
+				if (this.options.css) {
+					const els = $(this.options.css);
+					if (els.length) {
+						this.body = '';
+						els.each((i, el) => {
+							this.body += $(el).html();
+						});
+					} else {
+						this.logger.error(`No css elements matched selector ${this.options.css}`);
+					}
+				} else {
+					this.body = this.response.data;
+				}
 				break;
 			default:
 				// Anything else
@@ -139,10 +156,13 @@ export default class Poller {
 					return ua.browserName == 'Chrome' && ua.osName == 'Windows' && ua.osVersion == '10';
 				}),
 			},
-			proxy: process.env.HTTP_PROXY && process.env.HTTP_PROXY_PORT && {
-				host: process.env.HTTP_PROXY,
-				port: Number(process.env.HTTP_PROXY_PORT),
-			} || undefined,
+			proxy:
+				(process.env.HTTP_PROXY &&
+					process.env.HTTP_PROXY_PORT && {
+						host: process.env.HTTP_PROXY,
+						port: Number(process.env.HTTP_PROXY_PORT),
+					}) ||
+				undefined,
 		});
 		if (this.options.file) {
 			this.responseStream = await axios({ method: 'get', url: this.options.url, responseType: 'stream' });
