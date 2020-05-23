@@ -129,21 +129,23 @@ export default class Poller {
 	}
 
 	async onChange() {
-		this.logger.info(`Change detected ! URL: ${this.options.url}`);
+		this.logger.info(`Change detected !`);
 		this.saveBody();
 
 		// Send emails
 		for (let email of this.options.emails) {
 			try {
+				this.logger.info(`Sending email to: ${email}`);
 				await this.mailer.send({
 					from: process.env.EMAIL_FROM,
 					to: email,
 					subject: process.env.EMAIL_SUBJECT || 'Change detected !',
 					html: `Change detected on <a href="${this.options.url}">${this.options.url}</a>`,
 				});
-				this.logger.info(`Email sent to: ${email}`);
-			} catch (error) {
-				this.stop();
+				this.logger.info(`Email sent`);
+			} catch (e) {
+				this.logger.error(e);
+				break;
 			}
 		}
 	}
@@ -193,7 +195,6 @@ export default class Poller {
 	}
 
 	// Getters
-
 	get fileName() {
 		const ext = mime.getExtension(this.mime);
 		return `${moment().format('YYYY-MM-DD_HH-mm-ss.SSS')}-md5_${md5(this.body)}.${ext}`;

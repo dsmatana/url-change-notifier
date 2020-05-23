@@ -127,21 +127,23 @@ class Poller {
     }
     onChange() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.logger.info(`Change detected ! URL: ${this.options.url}`);
+            this.logger.info(`Change detected !`);
             this.saveBody();
             // Send emails
             for (let email of this.options.emails) {
                 try {
+                    this.logger.info(`Sending email to: ${email}`);
                     yield this.mailer.send({
                         from: process.env.EMAIL_FROM,
                         to: email,
                         subject: process.env.EMAIL_SUBJECT || 'Change detected !',
                         html: `Change detected on <a href="${this.options.url}">${this.options.url}</a>`,
                     });
-                    this.logger.info(`Email sent to: ${email}`);
+                    this.logger.info(`Email sent`);
                 }
-                catch (error) {
-                    this.stop();
+                catch (e) {
+                    this.logger.error(e);
+                    break;
                 }
             }
         });

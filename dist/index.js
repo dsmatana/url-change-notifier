@@ -16,9 +16,8 @@ const argv = yargs_1.default
     .option('url', { alias: 'u', describe: 'URL to watch', type: 'string', demandOption: true })
     .option('emails', { alias: 'e', describe: 'Email recipients to notify after change', type: 'string' })
     .option('interval', { alias: 'i', describe: 'Polling interval in seconds', type: 'number', default: 10 })
-    .option('count', { describe: 'Number of times to check url', type: 'number' })
+    .option('count', { alias: 'c', describe: 'Number of times to check url', type: 'number' })
     .option('css', {
-    alias: 'c',
     describe: 'For HTML responses only. Watch only contents of elements that match entered CSS selector',
     type: 'string',
 })
@@ -28,7 +27,13 @@ const argv = yargs_1.default
     type: 'boolean',
     default: false,
 })
-    .option('storage', { alias: 's', describe: 'Folder to store responses', type: 'string' }).argv;
+    .option('storage', { describe: 'Folder to store responses', type: 'string' })
+    .option('smtp_host', { describe: 'SMTP Host', type: 'string' })
+    .option('smtp_port', { describe: 'SMTP Port', type: 'number', default: 587 })
+    .option('smtp_secure', { describe: 'SMTP Secure flag', type: 'boolean', default: false })
+    .option('smtp_user', { describe: 'SMTP User', type: 'string' })
+    .option('smtp_pass', { describe: 'SMTP Password', type: 'string' })
+    .argv;
 const path = require('path');
 const run = () => {
     if (!argv.url) {
@@ -38,12 +43,12 @@ const run = () => {
         throw 'Enter interval greater or equal than 1';
     }
     const mailer = new Mailer_1.default({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: process.env.SMTP_SECURE === 'true',
+        host: argv.smtp_host || process.env.SMTP_HOST,
+        port: argv.smtp_port || Number(process.env.SMTP_PORT),
+        secure: argv.smtp_secure || process.env.SMTP_SECURE === 'true',
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+            user: argv.smtp_user || process.env.SMTP_USER,
+            pass: argv.smtp_pass || process.env.SMTP_PASS,
         },
     });
     const options = {
